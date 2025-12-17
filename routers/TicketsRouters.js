@@ -1,92 +1,114 @@
-import TicketSchema from "../model/TicketSchema.js";
-import UsersSchema from "../model/UsersSchema.js";
-import { verifyToken } from "../auth/TokenCreater.js";
+import Ticket from '../model/TicketSchema.js';
+import UsersSchema from '../model/UsersSchema.js';
 
+// create booking (user must be authenticated via verifyUser middleware in index.js)
 export const createBooking = async (req, res) => {
   try {
-    const { eventName, eventDate, ticketPrice, ticketCount } = req.body;
+    // expect: { ticketType, quantity, visitDate, totalPrice } (frontend may vary)
+    const { ticketType, quantity, visitDate, totalPrice } = req.body;
+    if (!req.user) return res.status(401).json({ message: 'No user' });
 
-    if (!eventName || !eventDate || !ticketPrice) {
-      return res.status(400).json({ message: "Event name, date, and ticket price are required" });
-    }
-
-    const booking = await TicketSchema.create({
+    const booking = await Ticket.create({
       user: req.user._id,
-      eventName,
-      eventDate,
-      ticketPrice,
-      ticketCount: ticketCount || 1
+      eventName: ticketType || 'Ticket',
+      eventDate: visitDate ? new Date(visitDate) : new Date(),
+      ticketPrice: totalPrice || 0,
+      ticketCount: quantity || 1,
     });
 
-    res.status(201).json({ message: "Booking created", booking });
+    return res.status(201).json({ message: 'Booking created', booking });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Create Booking Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// الحصول على الحجوزات الخاصة بالمستخدم
+// get bookings for current user
 export const getUserBookings = async (req, res) => {
   try {
-    const bookings = await TicketSchema.find({ user: req.user._id }).sort({ eventDate: 1 });
-    res.json({ bookings });
+    if (!req.user) return res.status(401).json({ message: 'No user' });
+    const bookings = await Ticket.find({ user: req.user._id }).sort({ createdAt: -1 });
+    return res.json({ bookings });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Get User Bookings Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// تعديل حجز
+// update a booking (only owner or admin)
 export const updateBooking = async (req, res) => {
   try {
-    if (!req.body) return res.status(400).json({ message: "Request body is required" });
+    const bookingId = req.params.id;
+    const booking = await Ticket.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    const booking = await TicketSchema.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    // allow if owner or admin
+    if (!req.user) return res.status(401).json({ message: 'No user' });
+    const isOwner = booking.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Not allowed' });
 
-    if (booking.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: "Only your bookings can be updated" });
-    }
-
-    const { eventName, eventDate, ticketPrice, ticketCount } = req.body;
-
-    if (eventName) booking.eventName = eventName;
-    if (eventDate) booking.eventDate = eventDate;
-    if (ticketPrice) booking.ticketPrice = ticketPrice;
-    if (ticketCount) booking.ticketCount = ticketCount;
+    const { quantity, visitDate, totalPrice, ticketType } = req.body;
+    if (quantity !== undefined) booking.ticketCount = quantity;
+    if (visitDate) booking.eventDate = new Date(visitDate);
+    if (totalPrice !== undefined) booking.ticketPrice = totalPrice;
+    if (ticketType) booking.eventName = ticketType;
 
     await booking.save();
-    res.json({ message: "Booking updated", booking });
+    return res.json({ message: 'Booking updated', booking });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Update Booking Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// حذف حجز
+// delete/cancel booking (only owner or admin)
 export const deleteBooking = async (req, res) => {
   try {
-    const booking = await TicketSchema.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: "Booking not found" });
-    if (booking.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      return res.status(403).json({ message: "You can only delete your own bookings" });
-    }
+    const bookingId = req.params.id;
+    const booking = await Ticket.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (!req.user) return res.status(401).json({ message: 'No user' });
+    const isOwner = booking.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: 'Not allowed' });
 
     await booking.deleteOne();
-    res.json({ message: "Booking deleted" });
+    return res.json({ message: 'Booking deleted' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Delete Booking Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 
-// جلب كل الحجوزات للأدمن مع معلومات المستخدم
+// Admin: get all bookings with optional pagination
 export const getAllBookings = async (req, res) => {
   try {
-    const bookings = await TicketSchema.find().populate("user", "name email").sort({ eventDate: 1 });
-    res.json({ bookings });
+    // expect verifyAdmin middleware to have run before this handler
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Ticket.countDocuments();
+    const bookings = await Ticket.find().sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).populate('user', 'userName email');
+    return res.json({ bookings, total, page: Number(page) });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error('Get All Bookings Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
+
+  // Provide ticket types (simple static list for now)
+  export const getTicketTypes = async (req, res) => {
+    try {
+      const types = [
+        { _id: '1', name: 'Adult', price: 25, description: 'Ages 18+' },
+        { _id: '2', name: 'Child', price: 12, description: 'Ages 3-17' },
+        { _id: '3', name: 'Senior', price: 18, description: 'Ages 65+' },
+        { _id: '4', name: 'Student', price: 15, description: 'With valid ID' },
+      ];
+      return res.json(types);
+    } catch (err) {
+      console.error('Get Ticket Types Error:', err);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  };

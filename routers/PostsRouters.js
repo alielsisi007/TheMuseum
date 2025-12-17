@@ -2,6 +2,7 @@ import PostsSchema from "../model/PostsSchema.js";
 import UsersSchema from "../model/UsersSchema.js";
 import { verifyToken } from "../auth/TokenCreater.js";
 import { isAdmin } from "../auth/auth.js";
+import cloudinary from "../config/cloudinary.js";
 
 // create posts (Admin Only)
 export const CreatePosts = async (req, res) => {
@@ -36,6 +37,29 @@ export const CreatePosts = async (req, res) => {
   } catch (err) {
     console.error("Create Post Error:", err);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Get all posts (public)
+export const getAllPosts = async (req, res) => {
+  try {
+    const posts = await PostsSchema.find().populate('user', 'userName email').sort({ createdAt: -1 });
+    return res.json(posts);
+  } catch (err) {
+    console.error('Get Posts Error:', err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get single post by id (public)
+export const getPostById = async (req, res) => {
+  try {
+    const post = await PostsSchema.findById(req.params.id).populate('user', 'userName email');
+    if (!post) return res.status(404).json({ message: 'Post not found' });
+    return res.json(post);
+  } catch (err) {
+    console.error('Get Post Error:', err);
+    return res.status(500).json({ message: 'Server error' });
   }
 };
 

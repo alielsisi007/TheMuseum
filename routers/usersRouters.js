@@ -5,25 +5,34 @@ import { isAdmin } from '../auth/auth.js';
 
 // Register User
 export const RegisterUser = async ( req, res ) => {
-    try {
-        const { username, email, password } = req.body;
-          if (!username || !email || !password) {
-                return res.status(400).json({ error: "All fields are required" });
-          }
+        try {
+      // Accept multiple possible name fields from frontend: username, userName or name
+      const username = req.body.username || req.body.userName || req.body.name;
+      const { email, password } = req.body;
+      // log body for debugging registration issues
+      console.log('Register request body:', req.body);
+      if (!username || !email || !password) {
+            const missing = [];
+            if (!username) missing.push('name/userName/username');
+            if (!email) missing.push('email');
+            if (!password) missing.push('password');
+            return res.status(400).json({ error: "Missing fields: " + missing.join(', ') });
+        }
 
-        // hash the password 
-        const hashedPass = bcrypt.hashSync( password, 10 )
-        const user =  await UsersSchema.create( {
-            userName: username,
-            email: email,
-            passwordHash: hashedPass,
-        } )
+                // hash the password 
+                const hashedPass = bcrypt.hashSync( password, 10 )
+                const user =  await UsersSchema.create( {
+                        userName: username,
+                        email: email,
+                        passwordHash: hashedPass,
+                } )
         const token = createToken( user )
-           res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,   // لازم HTTPS
-  sameSite: "none", // للسماح بـ cross-site
-  maxAge: 7 * 24 * 60 * 60 * 1000
+                     res.cookie("token", token, {
+    httpOnly: true,
+    // set `secure` true only in production so local dev on http works
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: "none", // للسماح بـ cross-site
+    maxAge: 7 * 24 * 60 * 60 * 1000
 });
 
 
@@ -53,11 +62,11 @@ export const LogInUser =  async ( req, res ) => {
             return res.status(401).json({ error: "Invalid email or password" });
         }
         const token = createToken( user );
-        res.cookie("token", token, {
-  httpOnly: true,
-  secure: true,   // لازم HTTPS
-  sameSite: "none", // للسماح بـ cross-site
-  maxAge: 7 * 24 * 60 * 60 * 1000
+                res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000
 });
 
 
@@ -140,3 +149,27 @@ export const getAllUsers =  async (req, res) => {
         return res.status(500).json({ message: "Server error" });
     }
 } 
+
+// Update current user's profile
+export const updateProfile = async (req, res) => {
+    try {
+        const token = req.cookies.token;
+        if (!token) return res.status(401).json({ message: 'No token' });
+
+        const decoded = verifyToken(token);
+        const user = await UsersSchema.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const { name, userName, username, email, password } = req.body;
+        const newName = userName || username || name;
+        if (newName) user.userName = newName;
+        if (email) user.email = email;
+        if (password) user.passwordHash = bcrypt.hashSync(password, 10);
+
+        await user.save();
+        return res.json({ message: 'Profile updated', user: { _id: user._id, userName: user.userName, email: user.email, role: user.role } });
+    } catch (err) {
+        console.error('Update Profile Error:', err);
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
