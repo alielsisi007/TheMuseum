@@ -39,6 +39,14 @@ mongoose.connect( process.env.MONGODB_URI, {
         
 })
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "success",
+    message: "API is running 🚀"
+  });
+});
+
+
 
 // register & login routes
 app.post( '/register', RegisterUser);
