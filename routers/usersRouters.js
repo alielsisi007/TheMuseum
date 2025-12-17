@@ -20,11 +20,12 @@ export const RegisterUser = async ( req, res ) => {
         } )
         const token = createToken( user )
             res.cookie("token", token, {
-            httpOnly: true,
-            secure: false, // true لو HTTPS
-            sameSite: "lax", // أو 'none' لو cross-site
-            maxAge: 7 * 24 * 60 * 60 * 1000
-        });
+                httpOnly: true,
+                secure: true,   // لازم HTTPS
+                sameSite: "none", // للسماح بـ cross-site
+                maxAge: 7 * 24 * 60 * 60 * 1000
+            });
+
         res.status(201).json({ message: "User registered successfully", token });
     } catch (err) {
         console.error("Register Error:", err); // للتصحيح في السيرفر
@@ -52,11 +53,12 @@ export const LogInUser =  async ( req, res ) => {
         }
         const token = createToken( user );
         res.cookie("token", token, {
-        httpOnly: true,
-        secure: false, // true لو HTTPS
-        sameSite: "lax", // أو 'none' لو cross-site
-        maxAge: 7 * 24 * 60 * 60 * 1000
+            httpOnly: true,
+            secure: true,   // لازم HTTPS
+            sameSite: "none", // للسماح بـ cross-site
+            maxAge: 7 * 24 * 60 * 60 * 1000
         });
+
         res.status(200).json({message: "User logged in successfully", token})
 
     } catch ( err ) {
