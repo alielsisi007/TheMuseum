@@ -38,9 +38,10 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch((err) => console.error("Error connecting to MongoDB:", err));
 
 app.use(cors({
-  origin: "http://localhost:3000", // لو شغال محلي
+  origin: ["http://localhost:3000", "https://b4bf0086-6293-457c-a3a6-819f107e3454.lovableproject.com"],
   credentials: true,
 }));
+
 
 app.get("/", (req, res) => {
   res.json({
