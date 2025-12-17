@@ -26,9 +26,11 @@ export const RegisterUser = async ( req, res ) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7days
         })
          res.status( 201 ).json( { message: "User registered successfully", token } );
-    } catch ( err ) {
-        res.status( 500 ).json( { error: "Error Resgistering User: ", err } );
-    }
+    } catch (err) {
+  console.error("Register Error:", err); // للتصحيح في السيرفر
+  res.status(500).json({ error: "Error Registering User: " + err.message });
+}
+
 }
 
 // Login User
