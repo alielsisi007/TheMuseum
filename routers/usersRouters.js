@@ -19,18 +19,17 @@ export const RegisterUser = async ( req, res ) => {
             passwordHash: hashedPass,
         } )
         const token = createToken( user )
-        res.cookie( "token", token, {
+            res.cookie("token", token, {
             httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7days
-        })
-         res.status( 201 ).json( { message: "User registered successfully", token } );
+            secure: false, // true لو HTTPS
+            sameSite: "lax", // أو 'none' لو cross-site
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
+        res.status(201).json({ message: "User registered successfully", token });
     } catch (err) {
-  console.error("Register Error:", err); // للتصحيح في السيرفر
-  res.status(500).json({ error: "Error Registering User: " + err.message });
-}
-
+        console.error("Register Error:", err); // للتصحيح في السيرفر
+        res.status(500).json({ error: "Error Registering User: " + err.message });
+    }
 }
 
 // Login User
@@ -52,12 +51,12 @@ export const LogInUser =  async ( req, res ) => {
             return res.status(401).json({ error: "Invalid email or password" });
         }
         const token = createToken( user );
-         res.cookie( "token", token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7days
-        })
+        res.cookie("token", token, {
+        httpOnly: true,
+        secure: false, // true لو HTTPS
+        sameSite: "lax", // أو 'none' لو cross-site
+        maxAge: 7 * 24 * 60 * 60 * 1000
+        });
         res.status(200).json({message: "User logged in successfully", token})
 
     } catch ( err ) {
