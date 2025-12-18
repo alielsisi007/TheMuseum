@@ -81,8 +81,9 @@ app.post( '/logIn', LogInUser );
 app.get('/profile', verifyUser, (req, res) => {
   // verifyUser middleware attaches the user to req.user
   if (!req.user) return res.status(404).json({ message: 'User not found' });
-  const { _id, userName, email, role } = req.user;
-  return res.json({ _id, userName, email, role });
+  const { _id, userName, email, role, createdAt } = req.user;
+  // return createdAt so frontend can show profile date
+  return res.json({ _id, userName, email, role, createdAt });
 });
 
 // Update profile (current user)
