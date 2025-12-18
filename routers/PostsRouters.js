@@ -43,8 +43,36 @@ export const CreatePosts = async (req, res) => {
 // Get all posts (public)
 export const getAllPosts = async (req, res) => {
   try {
-    const posts = await PostsSchema.find().populate('user', 'userName email').sort({ createdAt: -1 });
-    return res.json(posts);
+    // support pagination and simple search
+    const { page = 1, limit = 20, search } = req.query;
+    const q = {};
+    if (search) {
+      q.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const posts = await PostsSchema.find(q).populate('user', 'userName email').sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+
+    // map posts to frontend-friendly exhibit shape
+    const exhibits = posts.map(p => ({
+      _id: p._id,
+      name: p.title,
+      description: p.content,
+      images: p.images || [],
+      image: p.images && p.images.length ? p.images[0].url : null,
+      location: p.location || null,
+      duration: p.duration || null,
+      category: p.category || null,
+      user: p.user,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+
+    const total = await PostsSchema.countDocuments(q);
+    return res.json({ exhibits, total, page: Number(page) });
   } catch (err) {
     console.error('Get Posts Error:', err);
     return res.status(500).json({ message: 'Server error' });
@@ -56,7 +84,20 @@ export const getPostById = async (req, res) => {
   try {
     const post = await PostsSchema.findById(req.params.id).populate('user', 'userName email');
     if (!post) return res.status(404).json({ message: 'Post not found' });
-    return res.json(post);
+    const exhibit = {
+      _id: post._id,
+      name: post.title,
+      description: post.content,
+      images: post.images || [],
+      image: post.images && post.images.length ? post.images[0].url : null,
+      location: post.location || null,
+      duration: post.duration || null,
+      category: post.category || null,
+      user: post.user,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+    };
+    return res.json({ exhibit });
   } catch (err) {
     console.error('Get Post Error:', err);
     return res.status(500).json({ message: 'Server error' });
@@ -82,9 +123,17 @@ export const DeletePosts = async (req, res) => {
     const post = await PostsSchema.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // حذف الصورة من Cloudinary
-    if (post.image?.public_id) {
-      await cloudinary.uploader.destroy(post.image.public_id);
+    // حذف الصور من Cloudinary (إن وُجدت)
+    if (post.images && post.images.length > 0) {
+      for (let img of post.images) {
+        if (img.public_id) {
+          try {
+            await cloudinary.uploader.destroy(img.public_id);
+          } catch (e) {
+            console.warn('Failed to delete cloudinary image', img.public_id, e.message);
+          }
+        }
+      }
     }
 
     await post.deleteOne();
