@@ -54,7 +54,14 @@ export const getAllPosts = async (req, res) => {
     }
 
     const skip = (Number(page) - 1) * Number(limit);
-    const posts = await PostsSchema.find(q).populate('user', 'userName email').sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    let posts;
+    try {
+      posts = await PostsSchema.find(q).populate('user', 'userName email').sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    } catch (popErr) {
+      console.warn('Populate failed, falling back to non-populated posts:', popErr && popErr.message);
+      // If populate fails (e.g., MissingSchemaError on deployed env), fetch without populate to avoid 500
+      posts = await PostsSchema.find(q).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    }
 
     // map posts to frontend-friendly exhibit shape
     const exhibits = posts.map(p => ({
@@ -85,7 +92,13 @@ export const getAllPosts = async (req, res) => {
 // Get single post by id (public)
 export const getPostById = async (req, res) => {
   try {
-    const post = await PostsSchema.findById(req.params.id).populate('user', 'userName email');
+    let post;
+    try {
+      post = await PostsSchema.findById(req.params.id).populate('user', 'userName email');
+    } catch (popErr) {
+      console.warn('Populate failed for single post, falling back to non-populated post:', popErr && popErr.message);
+      post = await PostsSchema.findById(req.params.id);
+    }
     if (!post) return res.status(404).json({ message: 'Post not found' });
     const exhibit = {
       _id: post._id,
