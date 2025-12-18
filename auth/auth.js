@@ -20,8 +20,11 @@ export const verifyUser = async (req, res, next) => {
 
 export const verifyAdmin = async (req, res, next) => {
   try {
+    // ensure the requester is an authenticated user first
     await verifyUser(req, res, async () => {
-      if (!req.user.isAdmin) return res.status(403).json({ message: "Admins only" });
+      // UsersSchema stores role in `user.role` (value 'admin' for admins).
+      // Older code checked `req.user.isAdmin` which doesn't exist and caused false negatives.
+      if (!req.user || req.user.role !== 'admin') return res.status(403).json({ message: 'Admins only' });
       next();
     });
   } catch (err) {
