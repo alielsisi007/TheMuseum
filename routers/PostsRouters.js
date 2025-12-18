@@ -16,15 +16,13 @@ export const CreatePosts = async (req, res) => {
 
   const { title, content, location, category } = req.body;
 
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ message: "Images are required" });
-    }
+    // files may or may not be present; allow posts without images
+    console.log('CreatePosts body:', { title, content, location, category });
+    console.log('CreatePosts files:', req.files && req.files.length ? req.files.length : 0);
 
-    // هنا بننتظر الصور وتتأكد إنها موجودة
-    const images = req.files.map(file => ({
-      url: file.path,      // Cloudinary URL
-      public_id: file.filename
-    }));
+    const images = (req.files && req.files.length)
+      ? req.files.map(file => ({ url: file.path, public_id: file.filename }))
+      : [];
 
     const post = await PostsSchema.create({
       title,
