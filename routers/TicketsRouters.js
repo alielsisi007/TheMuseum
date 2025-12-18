@@ -16,6 +16,18 @@ export const createBooking = async (req, res) => {
       ticketCount: quantity || 1,
     });
 
+    // Also add a lightweight entry into the user's document for quick lookup in profile
+    try {
+      await UsersSchema.findByIdAndUpdate(req.user._id, {
+        $push: {
+          ticket: { name: ticketType || 'Ticket', day: visitDate ? new Date(visitDate) : new Date() }
+        }
+      });
+    } catch (uErr) {
+      console.error('Failed to update user.ticket array:', uErr);
+      // don't fail the booking if user update fails; still return booking
+    }
+
     return res.status(201).json({ message: 'Booking created', booking });
   } catch (err) {
     console.error('Create Booking Error:', err);
@@ -27,7 +39,17 @@ export const createBooking = async (req, res) => {
 export const getUserBookings = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'No user' });
-    const bookings = await Ticket.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const raw = await Ticket.find({ user: req.user._id }).sort({ createdAt: -1 });
+    // normalize shape for frontend: { _id, ticketType: { name, price }, quantity, visitDate, totalPrice, status, createdAt }
+    const bookings = raw.map(b => ({
+      _id: b._id,
+      ticketType: { name: b.eventName, price: b.ticketPrice },
+      quantity: b.ticketCount,
+      visitDate: b.eventDate,
+      totalPrice: b.ticketPrice,
+      status: 'confirmed',
+      createdAt: b.createdAt,
+    }));
     return res.json({ bookings });
   } catch (err) {
     console.error('Get User Bookings Error:', err);
@@ -89,7 +111,17 @@ export const getAllBookings = async (req, res) => {
     const { page = 1, limit = 50 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
     const total = await Ticket.countDocuments();
-    const bookings = await Ticket.find().sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).populate('user', 'userName email');
+    const raw = await Ticket.find().sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).populate('user', 'userName email');
+    const bookings = raw.map(b => ({
+      _id: b._id,
+      user: b.user,
+      ticketType: { name: b.eventName, price: b.ticketPrice },
+      quantity: b.ticketCount,
+      visitDate: b.eventDate,
+      totalPrice: b.ticketPrice,
+      status: 'confirmed',
+      createdAt: b.createdAt,
+    }));
     return res.json({ bookings, total, page: Number(page) });
   } catch (err) {
     console.error('Get All Bookings Error:', err);
