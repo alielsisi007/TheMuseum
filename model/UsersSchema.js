@@ -6,12 +6,21 @@ const UsersSchema = new mongoose.Schema( {
     passwordHash: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
     role: { type: String, default: "user" },
-    ticket: {
-       type: [ {
-            name: String,
-            day: Date,
-        } ] , default:null
-    }
+        // store a list of the user's bookings for quick access in profile
+        tickets: {
+            type: [
+                {
+                    bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' },
+                    ticketType: { type: String },
+                    quantity: { type: Number, default: 1 },
+                    visitDate: { type: Date },
+                    totalPrice: { type: Number, default: 0 },
+                    status: { type: String, default: 'confirmed' },
+                    createdAt: { type: Date, default: Date.now },
+                },
+            ],
+            default: [],
+        },
 } );
 
 export default mongoose.model( "User", UsersSchema );

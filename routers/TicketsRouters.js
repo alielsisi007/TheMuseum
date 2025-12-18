@@ -20,11 +20,19 @@ export const createBooking = async (req, res) => {
     try {
       await UsersSchema.findByIdAndUpdate(req.user._id, {
         $push: {
-          ticket: { name: ticketType || 'Ticket', day: visitDate ? new Date(visitDate) : new Date() }
-        }
+          tickets: {
+            bookingId: booking._id,
+            ticketType: ticketType || 'Ticket',
+            quantity: quantity || 1,
+            visitDate: visitDate ? new Date(visitDate) : new Date(),
+            totalPrice: totalPrice || 0,
+            status: 'confirmed',
+            createdAt: new Date(),
+          },
+        },
       });
     } catch (uErr) {
-      console.error('Failed to update user.ticket array:', uErr);
+      console.error('Failed to update user.tickets array:', uErr);
       // don't fail the booking if user update fails; still return booking
     }
 
