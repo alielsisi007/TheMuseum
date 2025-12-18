@@ -75,7 +75,10 @@ export const getAllPosts = async (req, res) => {
     return res.json({ exhibits, total, page: Number(page) });
   } catch (err) {
     console.error('Get Posts Error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    // Return limited error info for debugging (remove before production)
+    const msg = err && err.message ? err.message : 'Server error';
+    const stackPreview = err && err.stack ? err.stack.split('\n').slice(0,5) : [];
+    return res.status(500).json({ message: 'Server error', error: msg, stack: stackPreview });
   }
 };
 
