@@ -14,7 +14,7 @@ export const CreatePosts = async (req, res) => {
     const user = await UsersSchema.findById(decoded.id);
     if (!user || !isAdmin(user)) return res.status(403).json({ message: "Admins only" });
 
-    const { title, content } = req.body;
+  const { title, content, location, category } = req.body;
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "Images are required" });
@@ -29,6 +29,8 @@ export const CreatePosts = async (req, res) => {
     const post = await PostsSchema.create({
       title,
       content,
+      location: location || null,
+      category: category || null,
       images,
       user: user._id
     });
@@ -178,10 +180,12 @@ export const UpdatePost = async (req, res) => {
     const post = await PostsSchema.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    const { title, content } = req.body;
+  const { title, content, location, category } = req.body;
 
-    if (title) post.title = title;
-    if (content) post.content = content;
+  if (title) post.title = title;
+  if (content) post.content = content;
+  if (typeof location !== 'undefined') post.location = location || null;
+  if (typeof category !== 'undefined') post.category = category || null;
 
     // التعامل مع الصور سواء واحدة أو أكثر
     const newFiles = req.files?.length ? req.files : req.file ? [req.file] : [];

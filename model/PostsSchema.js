@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 const PostsSchema = new mongoose.Schema({
   title: String,
   content: String,
+  location: { type: String, default: null },
+  category: { type: String, default: null },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   images: [
     {
