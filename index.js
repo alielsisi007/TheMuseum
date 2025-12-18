@@ -19,6 +19,7 @@ import {
   getAllBookings,
   getTicketTypes,
 } from "./routers/TicketsRouters.js";
+import { getStats, getAnalytics } from './routers/adminRouters.js';
 
 dotenv.config();
 
@@ -129,6 +130,10 @@ app.delete("/bookings/:id", verifyUser, deleteBooking);
 
 // Admin route to get all bookings
 app.get("/admin/bookings", verifyAdmin, getAllBookings);
+
+// Admin stats & analytics
+app.get('/admin/stats', verifyAdmin, getStats);
+app.get('/admin/analytics', verifyAdmin, getAnalytics);
 
 // Public ticket types
 app.get('/tickets', getTicketTypes);
