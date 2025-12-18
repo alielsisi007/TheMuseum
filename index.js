@@ -92,12 +92,13 @@ import { updateProfile } from './routers/usersRouters.js';
 app.put('/profile', verifyUser, updateProfile);
 
 // get all users and filter it by role and if has teketc or not (Admin Only)
-app.get('/admin/users',getAllUsers);
+// Admin users routes (protected)
+app.get('/admin/users', verifyAdmin, getAllUsers);
 
-// delete & update Users
-app.delete( '/admin/deleteUserAccount', deleteUserAccount );
+// delete & update Users (admin only)
+app.delete('/admin/deleteUserAccount', verifyAdmin, deleteUserAccount );
 
-app.put( "/admin/updateUserToAdmin", updateUserToAdmin );
+app.put('/admin/updateUserToAdmin', verifyAdmin, updateUserToAdmin );
 
 
 // Create Post Route (Admin Only) 
