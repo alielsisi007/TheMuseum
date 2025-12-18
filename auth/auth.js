@@ -4,13 +4,28 @@ import { verifyToken } from "../auth/TokenCreater.js";
 export const verifyUser = async (req, res, next) => {
   try {
     const token = req.cookies.token;
-    if (!token) return res.status(401).json({ message: "No token" });
+    if (!token) {
+      console.warn('verifyUser: no token cookie present. Cookies:', req.cookies);
+      return res.status(401).json({ message: "No token" });
+    }
 
-    const decoded = verifyToken(token);
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (e) {
+      console.warn('verifyUser: token verify failed', e && e.message);
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
     const user = await UsersSchema.findById(decoded.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      console.warn('verifyUser: user not found for id', decoded.id);
+      return res.status(404).json({ message: "User not found" });
+    }
 
     req.user = user;
+    // don't log full user for privacy, just id and role
+    console.log('verifyUser: authenticated user', { id: user._id.toString(), role: user.role });
     next();
   } catch (err) {
     console.error(err);
